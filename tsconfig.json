@@ -1,15 +1,14 @@
 {
+  "include": ["src", "controllers"],
   "compilerOptions": {
     "module": "ESNext",
     "target": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "NodeNext",
     "allowJs": true,
-    "allowSyntheticDefaultImports": true,
-    "baseUrl": "src",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true
   },
-  "ts-node": { "esm": true },
-  "include": ["./**/*.ts"]
+  "ts-node": { "esm": true }
 }
