@@ -14,6 +14,7 @@ import { __basedirname } from '../../app.js';
 import { createValidationError } from './utls/index.js';
 import { RequestWithUserId } from '../middleware/is-auth.js';
 import { HydratedDocument } from 'mongoose';
+import { socket } from '../socket.js';
 
 const deleteImage = (imageRelPath: string) => {
   const imagePath = path.join(__basedirname, imageRelPath);
@@ -30,8 +31,10 @@ export const getPosts: RequestHandler = async (req, res, next) => {
   try {
     const totalItems = await Post.countDocuments();
     const posts = await Post.find()
+      .sort({ createdAt: -1 })
       .skip((page - 1) * perPage)
-      .limit(perPage);
+      .limit(perPage)
+      .populate('creator');
     res.status(200).json({
       message: 'Fetched posts successfully',
       posts: posts,
@@ -79,6 +82,7 @@ export const createPost: RequestHandler = async (
     const unknownPosts: any[] = user.posts;
     unknownPosts.push(createdPost);
     await user.save();
+    socket.getIO().emit('posts', { action: 'create', post });
     res.status(201).json({
       message: 'Post created successfully!',
       post: createdPost,
@@ -135,8 +139,8 @@ export const editPost: RequestHandler = async (
     ]);
   }
   try {
-    const post = await Post.findById(postId);
-    if (post.creator.toString() !== req.userId)
+    const post = await Post.findById(postId).populate('creator');
+    if (post.creator._id.toString() !== req.userId)
       return next(new Forbidden("You're not allowed to modify this resource"));
     const shouldDeleteOldFile = imageUrlFromFile && post.imageUrl;
     //I don't care if this does not complete right away.
@@ -145,7 +149,8 @@ export const editPost: RequestHandler = async (
     post.content = content;
     post.title = title;
     post.imageUrl = imageUrl;
-    await post.save();
+    const result = await post.save();
+    socket.getIO().emit('posts', { action: 'update', post: result });
 
     res.status(200).json({
       message: 'Post updated successfully',
@@ -180,7 +185,7 @@ export const deletePost: RequestHandler = async (
     //TODO: Need to research more about mongoose types
     const unknownUser: any = user;
     await unknownUser.posts.pull();
-
+    socket.getIO().emit('posts', { action: 'delete', post: postId });
     // I want to delete the file only when I'm sure I successfully deleted the post
     deleteImage(imageUrl);
     res.status(200).json({

@@ -8,6 +8,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { ApiErrors } from './src/errors/index.js';
 import { authRouter, feedRouter } from './src/routes/index.js';
+import http from 'http';
+import { socket } from './src/socket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 export const __basedirname = path.dirname(__filename);
@@ -89,8 +91,14 @@ try {
   if (!process.env.MONGO_DB_URI)
     throw new Error('No mongodb uri to connect to...');
   const db = await mongoose.connect(process.env.MONGO_DB_URI);
-  app.listen(port, () => {
-    console.debug(chalk.green(`Server up and running in ${port}`));
+  const httpServer = http.createServer(app);
+  const io = socket.init(httpServer);
+  io.on('connection', (socket) => {
+    console.debug(chalk.greenBright('Client connected!'));
+  });
+
+  httpServer.listen(port, () => {
+    console.debug(chalk.blue('Server up and running on: ', port));
   });
 } catch (dbError) {
   console.error(chalk.red('DB error'), { dbError });
