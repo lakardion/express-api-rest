@@ -7,9 +7,7 @@ import multer, { FileFilterCallback } from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ApiErrors } from './src/errors/index.js';
-import { authRouter, feedRouter } from './src/routes/index.js';
 import http from 'http';
-import { socket } from './src/socket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 export const __basedirname = path.dirname(__filename);
@@ -78,10 +76,6 @@ app.use(
   express.static(path.join(__basedirname, IMAGES_FILE_FOLDER))
 );
 app.use(corsMiddleware);
-
-app.use('/feed', feedRouter);
-app.use('/auth', authRouter);
-
 app.use(errorMiddleware);
 
 const port = process.env.PORT || 8080;
@@ -91,13 +85,7 @@ try {
   if (!process.env.MONGO_DB_URI)
     throw new Error('No mongodb uri to connect to...');
   const db = await mongoose.connect(process.env.MONGO_DB_URI);
-  const httpServer = http.createServer(app);
-  const io = socket.init(httpServer);
-  io.on('connection', (socket) => {
-    console.debug(chalk.greenBright('Client connected!'));
-  });
-
-  httpServer.listen(port, () => {
+  app.listen(port, () => {
     console.debug(chalk.blue('Server up and running on: ', port));
   });
 } catch (dbError) {
