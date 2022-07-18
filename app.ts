@@ -2,17 +2,21 @@ import bodyParser from 'body-parser';
 import chalk from 'chalk';
 import 'dotenv/config';
 import express, { ErrorRequestHandler, Request, RequestHandler } from 'express';
+import { graphqlHTTP } from 'express-graphql';
 import mongoose from 'mongoose';
 import multer, { FileFilterCallback } from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ApiErrors } from './src/errors/index.js';
-import http from 'http';
+import { ApiErrors, Unauthorized } from './src/errors/index.js';
+import { resolvers } from './src/graphql/resolvers.js';
+import { schema } from './src/graphql/schema.js';
+import { AuthedRequest, isAuthMiddleware } from './src/middleware/auth.js';
+import { deleteImage } from './src/utis/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 export const __basedirname = path.dirname(__filename);
-
 const IMAGES_FILE_FOLDER = 'images';
+
 const getMulterMiddleware = () => {
   //set where the files are going to be stored
   const storage = multer.diskStorage({
@@ -50,6 +54,10 @@ const corsMiddleware: RequestHandler = (req, res, next) => {
     'GET, POST, PUT, PATCH, DELETE'
   );
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  //We don't want to check options for graphql
+  if (req.path === '/graphql' && req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
   next();
 };
 const errorMiddleware: ErrorRequestHandler = (
@@ -76,6 +84,44 @@ app.use(
   express.static(path.join(__basedirname, IMAGES_FILE_FOLDER))
 );
 app.use(corsMiddleware);
+app.use(isAuthMiddleware);
+
+app.put('/post-image', (req: AuthedRequest, res, next) => {
+  if (!req.isAuth) {
+    throw new Unauthorized("You're not authorized to perform this asction");
+  }
+  if (!req.file) {
+    res.status(200).json({ message: 'No file provided' });
+  }
+  if (req.body.oldPath) {
+    deleteImage(req.body.oldPath);
+  }
+  return res
+    .status(201)
+    .json({ message: 'File stored', filePath: req.file.path });
+});
+
+app.use(
+  '/graphql',
+  graphqlHTTP({
+    schema,
+    rootValue: resolvers,
+    graphiql: true,
+    customFormatErrorFn: (error) => {
+      if (!error.originalError) {
+        return error;
+      }
+      //! blasphemy :cry:
+      const apiError = error.originalError as unknown as ApiErrors;
+      const { data, statusCode, message } = apiError;
+      return {
+        message,
+        data,
+        statusCode,
+      };
+    },
+  })
+);
 app.use(errorMiddleware);
 
 const port = process.env.PORT || 8080;

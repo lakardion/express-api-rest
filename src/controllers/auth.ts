@@ -1,14 +1,14 @@
+import bcryptjs from 'bcryptjs';
 import { RequestHandler } from 'express';
 import { validationResult } from 'express-validator';
-import { User } from '../models/index.js';
-import { createValidationError } from './utls/index.js';
-import bcryptjs from 'bcryptjs';
+import jsonwebtoken from 'jsonwebtoken';
 import {
   InternalServerError,
   NotFound,
   Unauthorized,
 } from '../errors/index.js';
-import jsonwebtoken from 'jsonwebtoken';
+import { User } from '../models/index.js';
+import { createValidationError } from './utls/index.js';
 
 const { hash, compare } = bcryptjs;
 const { sign } = jsonwebtoken;

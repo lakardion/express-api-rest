@@ -1,8 +1,18 @@
-import mongoose from 'mongoose';
+import mongoose, { ObjectId } from 'mongoose';
 
 const { Schema, model } = mongoose;
 
-const postSchema = new Schema(
+export interface PostModel {
+  title: string;
+  imageUrl: string;
+  content: string;
+  creator: ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+  _doc?: any;
+}
+
+const postSchema = new Schema<PostModel>(
   {
     title: {
       type: String,

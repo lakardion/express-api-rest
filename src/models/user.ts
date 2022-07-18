@@ -7,6 +7,7 @@ export interface UserModel {
   name: string;
   status: string;
   posts: string[];
+  _doc?: any;
 }
 
 const userSchema = new Schema<UserModel>({
